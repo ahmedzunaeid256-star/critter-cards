@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Critter Cards</title>
+<meta name="description" content="Turn animal photos into a collectible card game">
+<meta name="theme-color" content="#047857">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #f5f5f4;
+    color: #292524;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  img { max-width: 100%; display: block; }
+  button { font-family: inherit; cursor: pointer; border: none; }
+  input { font-family: inherit; }
+  button:focus-visible, input:focus-visible { outline: 2px solid #047857; outline-offset: 2px; }
+
+  .app-header {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(245,245,244,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #e7e5e4;
+  }
+  .header-inner {
+    max-width: 960px; margin: 0 auto;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .app-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 19px; font-weight: 700; margin: 0; color: #292524;
+  }
+  .app-subtitle { font-size: 12px; color: #78716c; margin: 2px 0 0; }
+
+  .btn { border-radius: 999px; font-weight: 600; font-size: 14px; padding: 10px 16px; }
+  .btn-primary { background: #047857; color: white; }
+  .btn-primary:hover { background: #065f46; }
+  .btn-secondary { background: rgba(255,255,255,0.9); color: #44403c; }
+  .btn-secondary:hover { background: white; }
+  .btn-danger { background: #ef4444; color: white; display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-header-add { display: none; align-items: center; gap: 6px; }
+
+  @media (min-width: 640px) {
+    .btn-header-add { display: inline-flex; }
+    .fab { display: none; }
+  }
+
+  .error-banner-wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  .error-banner {
+    margin-top: 12px; display: flex; align-items: flex-start; gap: 8px;
+    background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+    font-size: 14px; padding: 10px 12px; border-radius: 14px;
+  }
+  .error-banner button { background: none; color: #f87171; margin-left: auto; font-size: 16px; line-height: 1; padding: 0; }
+  .error-banner button:hover { color: #dc2626; }
+
+  .main-content { max-width: 960px; margin: 0 auto; padding: 16px; padding-bottom: 90px; }
+
+  .loading-state, .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 80px 20px;
+  }
+  .loading-state { color: #a8a29e; font-size: 14px; }
+  .empty-icon {
+    width: 64px; height: 64px; border-radius: 999px; background: #d1fae5;
+    display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 16px;
+  }
+  .empty-state h2 { font-size: 16px; font-weight: 600; color: #44403c; margin: 0 0 4px; }
+  .empty-state p { font-size: 14px; color: #78716c; max-width: 260px; margin: 0 0 20px; }
+
+  .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 640px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 768px) { .gallery-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 1024px) { .gallery-grid { grid-template-columns: repeat(5, 1fr); } }
+  .gallery-item { cursor: pointer; background: none; padding: 0; text-align: left; width: 100%; }
+
+  .card-face {
+    border-radius: 18px; border-width: 4px; border-style: solid;
+    overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+  }
+  .card-image-wrap { position: relative; aspect-ratio: 1 / 1; width: 100%; overflow: hidden; background: #e7e5e4; }
+  .card-image-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .badge {
+    position: absolute; top: 8px; color: white; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+  .badge-rarity { left: 8px; }
+  .badge-type { right: 8px; }
+  .card-body { padding: 10px 12px; }
+  .card-body.compact { padding: 8px 10px; }
+  .card-name { font-size: 14px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #292524; }
+  .card-note {
+    font-size: 12px; color: #78716c; font-style: italic; margin: 4px 0 10px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .stat-list { display: flex; flex-direction: column; gap: 6px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; }
+  .stat-icon { font-size: 12px; width: 14px; text-align: center; }
+  .stat-label { font-size: 11px; font-weight: 600; color: #78716c; width: 28px; }
+  .stat-track { flex: 1; height: 6px; background: #e7e5e4; border-radius: 999px; overflow: hidden; }
+  .stat-fill { height: 100%; background: #57534e; border-radius: 999px; }
+  .stat-value { font-size: 11px; font-weight: 700; color: #44403c; width: 22px; text-align: right; }
+
+  .fab {
+    position: fixed; bottom: 24px; right: 24px; z-index: 20;
+    width: 56px; height: 56px; border-radius: 999px; background: #047857; color: white;
+    display: flex; align-items: center; justify-content: center; font-size: 26px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  }
+  .fab:hover { background: #065f46; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-panel { background: white; border-radius: 18px; padding: 18px; width: 100%; max-width: 320px; }
+  .draft-preview { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
+  .field-label { font-size: 12px; font-weight: 600; color: #57534e; display: block; margin: 10px 0 4px; }
+  .field-input { width: 100%; padding: 10px 12px; border: 1px solid #d6d3d1; border-radius: 10px; font-size: 14px; }
+  .field-input:focus { outline: 2px solid #047857; outline-offset: 1px; border-color: #047857; }
+  .field-error { border-color: #ef4444 !important; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; text-align: center; }
+
+  .reveal-shell { width: 100%; max-width: 320px; }
+  .reveal-header { display: flex; align-items: center; justify-content: center; gap: 6px; color: white; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+  @keyframes revealPop { 0% { opacity: 0; transform: scale(0.85) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+  .reveal-pop { animation: revealPop 0.35s ease-out; }
+
+  @keyframes shineSweep { 0% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(220%) skewX(-20deg); } }
+  .shine-sweep {
+    position: absolute; top: 0; left: 0; width: 40%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.55), transparent);
+    animation: shineSweep 1.4s ease-in-out 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-pop, .shine-sweep { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+  <input type="file" id="fileInput" accept="image/*" capture="environment" hidden>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="app-title">Critter Cards</h1>
+        <p class="app-subtitle" id="cardCount">0 cards collected</p>
+      </div>
+      <button class="btn btn-primary btn-header-add" id="addBtn">📷 Add</button>
+    </div>
+  </header>
+
+  <div class="error-banner-wrap" id="errorBanner"></div>
+
+  <main class="main-content">
+    <div id="galleryContainer"></div>
+  </main>
+
+  <button class="fab" id="fab" aria-label="Add card">+</button>
+
+  <div id="modalRoot"></div>
+
+<script>
+  var ALLOWED_TYPES = ['Forest', 'Ocean', 'Sky', 'Desert', 'Arctic', 'Grassland', 'Jungle', 'Domestic', 'Nocturnal', 'Wetland', 'Mountain', 'Insect'];
+  var RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+  var RARITY_WEIGHTS = [45, 30, 15, 8, 2];
+
+  var TYPE_COLORS = {
+    Forest: '#15803d', Ocean: '#1d4ed8', Sky: '#0ea5e9', Desert: '#ea580c',
+    Arctic: '#0891b2', Grassland: '#4d7c0f', Jungle: '#065f46', Domestic: '#f43f5e',
+    Nocturnal: '#3730a3', Wetland: '#0f766e', Mountain: '#57534e', Insect: '#ca8a04'
+  };
+
+  var RARITY_COLORS = {
+    Common: { border: '#94a3b8', badge: '#64748b', bgFrom: '#f8fafc', bgTo: '#f1f5f9' },
+    Uncommon: { border: '#4ade80', badge: '#16a34a', bgFrom: '#f0fdf4', bgTo: '#d1fae5' },
+    Rare: { border: '#60a5fa', badge: '#2563eb', bgFrom: '#eff6ff', bgTo: '#e0f2fe' },
+    Epic: { border: '#c084fc', badge: '#9333ea', bgFrom: '#faf5ff', bgTo: '#fae8ff' },
+    Legendary: { border: '#fbbf24', badge: '#f59e0b', bgFrom: '#fffbeb', bgTo: '#ffedd5' }
+  };
+
+  var state = {
+    cards: [],
+    loading: true,
+    error: null,
+    draftImage: null,
+    pendingCard: null,
+    selectedCard: null
+  };
+
+  // ---------- LocalStorage ----------
+  function loadCards() {
+    state.loading = true;
+    render();
+    try {
+      var json = localStorage.getItem('critterCards');
+      state.cards = json ? JSON.parse(json) : [];
+      state.cards.sort(function (a, b) { return b.createdAt - a.createdAt; });
+    } catch (e) {
+      console.error(e);
+      state.error = "Couldn't load your collection.";
+    }
+    state.loading = false;
+    render();
+  }
+
+  function saveCards() {
+    try {
+      localStorage.setItem('critterCards', JSON.stringify(state.cards));
+    } catch (e) {
+      console.error(e);
+      state.error = "Couldn't save your card.";
+      render();
+    }
+  }
+
+  // ---------- Image handling ----------
+  function fileToImage(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function resizeImage(img, maxDim, quality) {
+    maxDim = maxDim || 640;
+    quality = quality || 0.72;
+    var width = img.width, height = img.height;
+    if (width >= height && width > maxDim) {
+      height = Math.round((height * maxDim) / width);
+      width = maxDim;
+    } else if (height > width && height > maxDim) {
+      width = Math.round((width * maxDim) / height);
+      height = maxDim;
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  // ---------- Deterministic stats ----------
+  function seededRandom(str) {
+    var h = 1779033703 ^ str.length;
+    for (var i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+
+  function weightedPick(items, weights, rand) {
+    var total = weights.reduce(function (a, b) { return a + b; }, 0);
+    var r = rand() * total;
+    for (var i = 0; i < items.length; i++) {
+      if (r < weights[i]) return items[i];
+      r -= weights[i];
+    }
+    return items[items.length - 1];
+  }
+
+  function generateCardStats(name) {
+    var rand = seededRandom(name.trim().toLowerCase());
+    var type = ALLOWED_TYPES[Math.floor(rand() * ALLOWED_TYPES.length)];
+    var rarity = weightedPick(RARITIES, RARITY_WEIGHTS, rand);
+    function stat() { return 20 + Math.floor(rand() * 81); }
+    return { type: type, rarity: rarity, hp: stat(), attack: stat(), defense: stat(), speed: stat() };
+  }
+
+  // ---------- Helpers ----------
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  // ---------- Rendering ----------
+  function statBarHTML(icon, label, value) {
+    return '' +
+      '<div class="stat-row">' +
+        '<span class="stat-icon">' + icon + '</span>' +
+        '<span class="stat-label">' + label + '</span>' +
+        '<div class="stat-track"><div class="stat-fill" style="width:' + value + '%"></div></div>' +
+        '<span class="stat-value">' + value + '</span>' +
+      '</div>';
+  }
+
+  function cardFaceHTML(card, size) {
+    var rc = RARITY_COLORS[card.rarity] || RARITY_COLORS.Common;
+    var typeColor = TYPE_COLORS[card.type] || '#57534e';
+    var compact = size === 'small';
+    var legendaryGlow = card.rarity === 'Legendary' ? 'box-shadow:0 0 22px rgba(245,158,11,0.45);' : '';
+    return '' +
+      '<div class="card-face" style="border-color:' + rc.border + '; background:linear-gradient(to bottom, ' + rc.bgFrom + ', ' + rc.bgTo + '); ' + legendaryGlow + '">' +
+        '<div class="card-image-wrap">' +
+          '<img src="' + card.image + '" alt="' + escapeHtml(card.name) + '">' +
+          '<span class="badge badge-rarity" style="background:' + rc.badge + '">' + card.rarity + '</span>' +
+          '<span class="badge badge-type" style="background:' + typeColor + '">' + card.type + '</span>' +
+          (size === 'reveal' ? '<div class="shine-sweep"></div>' : '') +
+        '</div>' +
+        '<div class="card-body' + (compact ? ' compact' : '') + '">' +
+          '<h3 class="card-name">' + escapeHtml(card.name) + '</h3>' +
+          (!compact ? (
+            '<p class="card-note">' + escapeHtml(card.note) + '</p>' +
+            '<div class="stat-list">' +
+              statBarHTML('❤️', 'HP', card.hp) +
+              statBarHTML('⚔️', 'ATK', card.attack) +
+              statBarHTML('🛡️', 'DEF', card.defense) +
+              statBarHTML('⚡', 'SPD', card.speed) +
+            '</div>'
+          ) : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  function render() {
+    renderHeader();
+    renderError();
+    renderGallery();
+    renderModal();
+  }
+
+  function renderHeader() {
+    var n = state.cards.length;
+    document.getElementById('cardCount').textContent = n + (n === 1 ? ' card' : ' cards') + ' collected';
+  }
+
+  function renderError() {
+    var el = document.getElementById('errorBanner');
+    if (!state.error) { el.innerHTML = ''; return; }
+    el.innerHTML = '' +
+      '<div class="error-banner">' +
+        '<span>⚠️</span>' +
+        '<span>' + escapeHtml(state.error) + '</span>' +
+        '<button id="dismissErrorBtn" aria-label="Dismiss">✕</button>' +
+      '</div>';
+    document.getElementById('dismissErrorBtn').onclick = function () { state.error = null; render(); };
+  }
+
+  function renderGallery() {
+    var container = document.getElementById('galleryContainer');
+    if (state.loading) {
+      container.innerHTML = '<div class="loading-state">Loading your collection…</div>';
+      return;
+    }
+    if (state.cards.length === 0) {
+      container.innerHTML = '' +
+        '<div class="empty-state">' +
+          '<div class="empty-icon">📷</div>' +
+          '<h2>No critters yet</h2>' +
+          '<p>Tap the + button, pick a photo of any animal, name it, and it becomes a card!</p>' +
+          '<button class="btn btn-primary" id="emptyAddBtn">Add your first card</button>' +
+        '</div>';
+      document.getElementById('emptyAddBtn').onclick = openPicker;
+      return;
+    }
+    container.innerHTML = '<div class="gallery-grid">' +
+      state.cards.map(function (c) {
+        return '<button class="gallery-item" data-card-id="' + c.id + '">' + cardFaceHTML(c, 'small') + '</button>';
+      }).join('') +
+      '</div>';
+  }
+
+  function renderModal() {
+    var root = document.getElementById('modalRoot');
+    if (state.draftImage) {
+      root.innerHTML = draftFormHTML(state.draftImage);
+      bindDraftFormEvents();
+    } else if (state.pendingCard) {
+      root.innerHTML = revealHTML(state.pendingCard);
+      bindRevealEvents();
+    } else if (state.selectedCard) {
+      root.innerHTML = detailHTML(state.selectedCard);
+      bindDetailEvents();
+    } else {
+      root.innerHTML = '';
+    }
+  }
+
+  function draftFormHTML(image) {
+    return '' +
+      '<div class="modal-overlay">' +
+        '<div class="modal-panel">' +
+          '<img src="' + image + '" class="draft-preview" alt="New critter">' +
+          '<label class="field-label" for="nameInput">What is it?</label>' +
+          '<input id="nameInput" class="field-input" placeholder="Animal name" maxlength="40" autocomplete="off">' +
+          '<label class="field-label" for="noteInput">Where did you find it? (optional)</label>' +
+          '<input id="noteInput" class="field-input" placeholder="Location or note" maxlength="80" autocomplete="off">' +
+          '<div class="modal-actions">' +
+            '<button class="btn btn-secondary" id="discardDraftBtn">Discard</button>' +
+            '<button class="btn btn-primary" id="createCardBtn">Create card</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function bindDraftFormEvents() {
+    var nameInput = document.getElementById('nameInput');
+    document.getElementById('discardDraftBtn').onclick = discardDraft;
+    document.getElementById('createCardBtn').onclick = function () {
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add('field-error');
+        nameInput.focus();
+        return;
+      }
+      var note = document.getElementById('noteInput').value;
+      submitDraft(nameInput.value, note);
+    };
+    nameInput.addEventListener('input', function () { nameInput.classList.remove('field-error'); });
+    nameInput.focus();
+  }
+
+  function revealHTML(card) {
+    return '' +
+      '<div class="modal-overlay">' +
+        '<div class="reveal-shell reveal-pop">' +
+          '<div class="reveal-header"><span>✨</span><span>New card</span></div>' +
+          cardFaceHTML(card, 'reveal') +
+          '<div class="modal-actions">' +
+            '<button class="btn btn-secondary" id="discardPendingBtn">Discard</button>' +
+            '<button class="btn btn-primary" id="confirmSaveBtn">Add to collection</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function bindRevealEvents() {
+    document.getElementById('discardPendingBtn').onclick = discardPending;
+    document.getElementById('confirmSaveBtn').onclick = confirmSave;
+  }
+
+  function detailHTML(card) {
+    return '' +
+      '<div class="modal-overlay" id="detailOverlay">' +
+        '<div class="reveal-shell" id="detailPanel">' +
+          cardFaceHTML(card, 'detail') +
+          '<div class="modal-actions">' +
+            '<button class="btn btn-secondary" id="closeDetailBtn">Close</button>' +
+            '<button class="btn btn-danger" id="deleteBtn">🗑️ Delete</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function bindDetailEvents() {
+    document.getElementById('closeDetailBtn').onclick = closeDetail;
+    document.getElementById('deleteBtn').onclick = deleteSelected;
+    document.getElementById('detailOverlay').onclick = function (e) {
+      if (e.target.id === 'detailOverlay') closeDetail();
+    };
+    document.getElementById('detailPanel').onclick = function (e) { e.stopPropagation(); };
+  }
+
+  // ---------- Actions ----------
+  function openPicker() {
+    state.error = null;
+    document.getElementById('fileInput').click();
+  }
+
+  function handleFileSelect(e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    state.error = null;
+    fileToImage(file).then(function (img) {
+      state.draftImage = resizeImage(img);
+      render();
+    }).catch(function (err) {
+      console.error(err);
+      state.error = "Couldn't read that photo. Try another one.";
+      render();
+    });
+  }
+
+  function discardDraft() {
+    state.draftImage = null;
+    render();
+  }
+
+  function submitDraft(name, note) {
+    var stats = generateCardStats(name);
+    state.pendingCard = {
+      id: 'card_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      image: state.draftImage,
+      name: name.trim(),
+      type: stats.type,
+      rarity: stats.rarity,
+      hp: stats.hp,
+      attack: stats.attack,
+      defense: stats.defense,
+      speed: stats.speed,
+      note: (note && note.trim()) || 'A wild find for the collection.',
+      createdAt: Date.now()
+    };
+    state.draftImage = null;
+    render();
+  }
+
+  function discardPending() {
+    state.pendingCard = null;
+    render();
+  }
+
+  function confirmSave() {
+    if (!state.pendingCard) return;
+    state.cards.unshift(state.pendingCard);
+    saveCards();
+    state.pendingCard = null;
+    render();
+  }
+
+  function closeDetail() {
+    state.selectedCard = null;
+    render();
+  }
+
+  function deleteSelected() {
+    if (!state.selectedCard) return;
+    var id = state.selectedCard.id;
+    state.cards = state.cards.filter(function (c) { return c.id !== id; });
+    saveCards();
+    state.selectedCard = null;
+    render();
+  }
+
+  // ---------- Init ----------
+  document.getElementById('galleryContainer').addEventListener('click', function (e) {
+    var cardEl = e.target.closest('[data-card-id]');
+    if (cardEl) {
+      state.selectedCard = state.cards.find(function (c) { return c.id === cardEl.dataset.cardId; }) || null;
+      render();
+    }
+  });
+  document.getElementById('addBtn').onclick = openPicker;
+  document.getElementById('fab').onclick = openPicker;
+  document.getElementById('fileInput').onchange = handleFileSelect;
+
+  loadCards();
+
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
